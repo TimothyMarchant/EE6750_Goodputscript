@@ -32,7 +32,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
-
+#include <filesystem>
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -293,6 +293,8 @@ int
 main (int argc, char *argv[])
 {
   std::string perListStr  = "0,0.005,0.01,0.02,0.05,0.1";
+  std::string FileoutputName = "goodput_";
+  std::string outputFolder = "goodputOutputs";
   uint32_t numVehicles    = 6;
   double simTime          = 40.0;
   double measureStart     = 15.0;
@@ -304,8 +306,10 @@ main (int argc, char *argv[])
   uint32_t packetSize     = 512;
   double offeredLoadMbps  = 1.0;
   uint32_t seed           = 1;
-
+  
   CommandLine cmd;
+  cmd.AddValue("Filename",      "Output file name",                     FileoutputName);
+  cmd.AddValue("Foldername",    "Output folder name",                     outputFolder);
   cmd.AddValue ("perList",       "Comma-separated PER list",          perListStr);
   cmd.AddValue ("numVehicles",   "Number of vehicles in cluster",     numVehicles);
   cmd.AddValue ("simTime",       "Simulation time (s)",               simTime);
@@ -320,6 +324,16 @@ main (int argc, char *argv[])
   cmd.AddValue ("seed",          "RNG seed",                          seed);
   cmd.Parse (argc, argv);
 
+
+  std::string seedString  = std::to_string(seed);
+
+  try {
+    std::filesystem::create_directory(outputFolder);
+  }
+  catch (int e){
+    std::cout << e;
+    std::cout << "Folder exists already";
+  }
   auto pers = ParseDoubleList (perListStr);
   NS_ABORT_MSG_IF (pers.empty (), "perList is empty");
   NS_ABORT_MSG_IF (numVehicles < 2, "Need at least 2 vehicles");
@@ -336,8 +350,8 @@ main (int argc, char *argv[])
             << "  simTime=" << simTime << " s"
             << "  measure=[" << measureStart << "," << measureEnd << "] s\n\n";
 
-  std::ofstream tcpDat ("goodput_tcp.dat");
-  std::ofstream quicDat ("goodput_quic.dat");
+  std::ofstream tcpDat (outputFolder + "/"  + seedString + "_" +  FileoutputName+"tcp.dat");
+  std::ofstream quicDat (outputFolder + "/" + seedString + "_" + FileoutputName+"quic.dat");
   tcpDat  << "#per avg_goodput_mbps_per_flow\n";
   quicDat << "#per avg_goodput_mbps_per_flow\n";
 
