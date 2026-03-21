@@ -98,7 +98,8 @@ RunOne (const std::string &transport,
         double              speedSpread,
         uint32_t            packetSize,
         double              offeredLoadMbps,
-        uint32_t            seed)
+        uint32_t            seed,
+        uint32_t            verbose)
 {
   RngSeedManager::SetSeed (seed);
   RngSeedManager::SetRun (1);
@@ -269,10 +270,11 @@ RunOne (const std::string &transport,
   for (const auto &kv : monitor->GetFlowStats ())
     {
       auto t = classifier->FindFlow (kv.first);
-      std::cout << "    [DBG] flow " << kv.first << " " << t.sourceAddress
+      if (verbose){
+        std::cout << "    [DBG] flow " << kv.first << " " << t.sourceAddress
                 << " -> " << t.destinationAddress << ":" << t.destinationPort
                 << " rxBytes=" << kv.second.rxBytes << "\n";
-
+      }
       if (t.destinationPort >= basePort)
         {
           totalRxBytes += (double)kv.second.rxBytes;
@@ -306,6 +308,7 @@ main (int argc, char *argv[])
   uint32_t packetSize     = 512;
   double offeredLoadMbps  = 1.0;
   uint32_t seed           = 1;
+  uint32_t verbose        = 1;
   
   CommandLine cmd;
   cmd.AddValue("Filename",      "Output file name",                     FileoutputName);
@@ -322,6 +325,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("packetSize",    "Packet size in bytes",              packetSize);
   cmd.AddValue ("rateMbps",      "Offered load per flow (Mbps)",      offeredLoadMbps);
   cmd.AddValue ("seed",          "RNG seed",                          seed);
+  cmd.AddValue ("verbose",       "Is output verbose",                 verbose);
   cmd.Parse (argc, argv);
 
 
@@ -339,7 +343,7 @@ main (int argc, char *argv[])
   NS_ABORT_MSG_IF (numVehicles < 2, "Need at least 2 vehicles");
 
   uint32_t numFlows = numVehicles; // ring: one flow per vehicle
-
+  if (verbose){
   std::cout << "V2V Cluster Goodput vs PER  |  802.11p/WAVE  |  TCP(BBR) vs QUIC(BBR)\n";
   std::cout << "numVehicles=" << numVehicles
             << "  flows=" << numFlows << " (ring)"
@@ -349,7 +353,7 @@ main (int argc, char *argv[])
             << "  speed=" << speed << " +/-" << speedSpread << " m/s"
             << "  simTime=" << simTime << " s"
             << "  measure=[" << measureStart << "," << measureEnd << "] s\n\n";
-
+  }
   std::ofstream tcpDat (outputFolder + "/"  + seedString + "_" +  FileoutputName+"_tcp.dat");
   std::ofstream quicDat (outputFolder + "/" + seedString + "_" + FileoutputName+"_quic.dat");
   tcpDat  << "#per avg_goodput_mbps_per_flow\n";
@@ -357,18 +361,24 @@ main (int argc, char *argv[])
 
   for (double per : pers)
     {
-      std::cout << "PER=" << per << " : TCP(BBR)..." << std::flush;
+      if (verbose) {
+        std::cout << "PER=" << per << " : TCP(BBR)..." << std::flush;
+      }
       double tcpGp = RunOne ("tcp", per, numVehicles, simTime, measureStart,
                              measureEnd, clusterLength, clusterWidth, speed,
-                             speedSpread, packetSize, offeredLoadMbps, seed);
-      std::cout << " " << tcpGp << " Mbps\n" << std::flush;
-
-      std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
+                             speedSpread, packetSize, offeredLoadMbps, seed, verbose);
+      if (verbose) {
+        std::cout << " " << tcpGp << " Mbps\n" << std::flush;
+      }
+      if (verbose){
+        std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
+      }
       double quicGp = RunOne ("quic", per, numVehicles, simTime, measureStart,
                               measureEnd, clusterLength, clusterWidth, speed,
-                              speedSpread, packetSize, offeredLoadMbps, seed);
-      std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
-
+                              speedSpread, packetSize, offeredLoadMbps, seed, verbose);
+      if (verbose){
+        std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
+      }
       tcpDat  << std::fixed << std::setprecision (6) << per << " " << tcpGp  << "\n";
       quicDat << std::fixed << std::setprecision (6) << per << " " << quicGp << "\n";
     }
@@ -389,9 +399,10 @@ main (int argc, char *argv[])
      << "plot 'goodput_tcp.dat'  using 1:2 with linespoints title 'TCP (BBR)', \\\n"
      << "     'goodput_quic.dat' using 1:2 with linespoints title 'QUIC (BBR)'\n";
   gp.close ();
-
-  std::cout << "Output: goodput_tcp.dat  goodput_quic.dat  goodput.plt\n";
-  std::cout << "To plot: gnuplot goodput.plt\n";
+  if (verbose){
+    std::cout << "Output: goodput_tcp.dat  goodput_quic.dat  goodput.plt\n";
+    std::cout << "To plot: gnuplot goodput.plt\n";
+  }
 
   return 0;
 }
