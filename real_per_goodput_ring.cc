@@ -293,7 +293,7 @@ int
 main (int argc, char *argv[])
 {
   std::string perListStr  = "0,0.005,0.01,0.02,0.05,0.1";
-  std::string FileoutputName = "goodput_";
+  std::string FileoutputName = "goodput";
   std::string outputFolder = "goodputOutputs";
   uint32_t numVehicles    = 6;
   double simTime          = 40.0;
@@ -350,8 +350,8 @@ main (int argc, char *argv[])
             << "  simTime=" << simTime << " s"
             << "  measure=[" << measureStart << "," << measureEnd << "] s\n\n";
 
-  std::ofstream tcpDat (outputFolder + "/"  + seedString + "_" +  FileoutputName+"tcp.dat");
-  std::ofstream quicDat (outputFolder + "/" + seedString + "_" + FileoutputName+"quic.dat");
+  std::ofstream tcpDat (outputFolder + "/"  + seedString + "_" +  FileoutputName+"_tcp.dat");
+  std::ofstream quicDat (outputFolder + "/" + seedString + "_" + FileoutputName+"_quic.dat");
   tcpDat  << "#per avg_goodput_mbps_per_flow\n";
   quicDat << "#per avg_goodput_mbps_per_flow\n";
 
