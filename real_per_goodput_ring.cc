@@ -377,7 +377,7 @@ main (int argc, char *argv[])
   quicDat.close ();
 
   // Gnuplot script
-  std::ofstream gp ("goodput.plt");
+  std::ofstream gp (outputFolder + "/"  + seedString + "_" + FileoutputName + "_" + "goodput.plt");
   gp << "set terminal pngcairo size 1000,600\n"
      << "set output 'goodput.png'\n"
      << "set title 'V2V Cluster Avg Goodput vs PER (" << numVehicles
