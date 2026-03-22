@@ -1,7 +1,6 @@
 This repo is for our group project in EE6750 wireless communications at Kennesaw State University.  In this project we are using NS-3 with a QUIC addon to determine if QUIC(BBR) has better performance in V2V communication over WiFi than TCP(BBR).  
 This repo contains scripts for running our simulations and necessary bash scripts for automating that process.  With our limited testing currently it would seem TCP has better P95 latency at the moment.  More testing needs to be done.
-
-
+To run these, place RunSims.sh in the NS-3 folder, and the goodput script in NS-3/Scratch.  This requires that you have NS-3 install correctly.  
 
 To install all the required depednecies follow these instructions.  Run these in WSL not windows git bash otherwise you will have problems (do not clone repos in windows git bash).  gcc and g++ version 9 is required.
 to install version 9 of gcc and g++ run  
