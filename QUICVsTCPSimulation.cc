@@ -163,6 +163,7 @@ RunOne (const std::string &transport,
         double              offeredLoadMbps,
         uint32_t            seed,
         uint32_t            verbose,
+        uint32_t            QUICStreams,
         std::string         FileName
       )
 {
@@ -314,7 +315,7 @@ RunOne (const std::string &transport,
           client.SetAttribute ("Interval",    TimeValue (MilliSeconds (
               (packetSize * 8.0) / (offeredLoadMbps * 1000.0))));
           client.SetAttribute ("PacketSize",  UintegerValue (packetSize));
-          client.SetAttribute ("NumStreams",   UintegerValue (1));
+          client.SetAttribute ("NumStreams",   UintegerValue (QUICStreams));
           auto clientApps = client.Install (nodes.Get (sender));
           clientApps.Start (Seconds (2.0));
           clientApps.Stop  (Seconds (simTime));
@@ -395,6 +396,8 @@ main (int argc, char *argv[])
   std::string perListStr  = "0,0.005,0.01,0.02,0.05,0.1";
   std::string FileoutputName = "goodput";
   std::string outputFolder = "goodputOutputs";
+
+  uint32_t streams        = 1;
   uint32_t numVehicles    = 6;
   double simTime          = 40.0;
   double measureStart     = 15.0;
@@ -424,6 +427,7 @@ main (int argc, char *argv[])
   cmd.AddValue ("rateMbps",      "Offered load per flow (Mbps)",      offeredLoadMbps);
   cmd.AddValue ("seed",          "RNG seed",                          seed);
   cmd.AddValue ("verbose",       "Is output verbose",                 verbose);
+  cmd.AddValue ("Streams",       "Number of QUIC Streams",            streams);
   cmd.Parse (argc, argv);
 
   std::cout << perListStr;
@@ -457,11 +461,6 @@ main (int argc, char *argv[])
   CreateCSVFile(TCPCSV);
   CreateCSVFile(QUICCSV);
 
-  std::ofstream tcpDat (outputFolder + "/"  + seedString + "_" +  FileoutputName+"_tcp.dat");
-  std::ofstream quicDat (outputFolder + "/" + seedString + "_" + FileoutputName+"_quic.dat");
-  tcpDat  << "#per avg_goodput_mbps_per_flow\n";
-  quicDat << "#per avg_goodput_mbps_per_flow\n";
-
   for (double per : pers)
     {
       double tcpGp=0;
@@ -472,7 +471,7 @@ main (int argc, char *argv[])
       try {
         tcpGp = RunOne ("tcp", per, numVehicles, simTime, measureStart,
                              measureEnd, clusterLength, clusterWidth, speed,
-                             speedSpread, packetSize, offeredLoadMbps, seed, verbose,TCPCSV);
+                             speedSpread, packetSize, offeredLoadMbps, seed, verbose,streams,TCPCSV);
         }
         catch (int e){
           std::cout << e;
@@ -480,14 +479,13 @@ main (int argc, char *argv[])
         }
       if (verbose) {
         std::cout << " " << tcpGp << " Mbps\n" << std::flush;
-      }
-      if (verbose){
+
         std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
       }
       try{
         quicGp = RunOne ("quic", per, numVehicles, simTime, measureStart,
                               measureEnd, clusterLength, clusterWidth, speed,
-                              speedSpread, packetSize, offeredLoadMbps, seed, verbose,QUICCSV);
+                              speedSpread, packetSize, offeredLoadMbps, seed, verbose,streams,QUICCSV);
         }
         catch (int e){
           std::cout << e;
@@ -496,30 +494,8 @@ main (int argc, char *argv[])
       if (verbose){
         std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
       }
-      tcpDat  << std::fixed << std::setprecision (6) << per << " " << tcpGp  << "\n";
-      quicDat << std::fixed << std::setprecision (6) << per << " " << quicGp << "\n";
     }
 
-  tcpDat.close ();
-  quicDat.close ();
-
-  // Gnuplot script
-  std::ofstream gp (outputFolder + "/"  + seedString + "_" + FileoutputName + "_" + "goodput.plt");
-  gp << "set terminal pngcairo size 1000,600\n"
-     << "set output 'goodput.png'\n"
-     << "set title 'V2V Cluster Avg Goodput vs PER (" << numVehicles
-     << " vehicles, " << numFlows << " flows, ring) — TCP(BBR) vs QUIC(BBR)'\n"
-     << "set xlabel 'Packet Error Rate (PER)'\n"
-     << "set ylabel 'Avg Goodput per Flow (Mbps)'\n"
-     << "set grid\n"
-     << "set key left top\n"
-     << "plot 'goodput_tcp.dat'  using 1:2 with linespoints title 'TCP (BBR)', \\\n"
-     << "     'goodput_quic.dat' using 1:2 with linespoints title 'QUIC (BBR)'\n";
-  gp.close ();
-  if (verbose){
-    std::cout << "Output: goodput_tcp.dat  goodput_quic.dat  goodput.plt\n";
-    std::cout << "To plot: gnuplot goodput.plt\n";
-  }
 
   return 0;
 }
