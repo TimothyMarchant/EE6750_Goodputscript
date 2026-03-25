@@ -139,6 +139,7 @@ static void WriteToCSVFile(double * Row, const std::string FileName){
       streamwriter << ",";
     }
     streamwriter << Row[5] << std::endl;
+    streamwriter.close();
   }
   catch (int e){
     std::cout << "Write Error\n";

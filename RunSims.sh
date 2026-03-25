@@ -3,26 +3,25 @@ ProgressBar(){
     Total=$1
     Current=$2
 
-    printf $2"/"$1"\r"
+    printf $2"/"$1"\n"
 }
-NumberOfCarsArray=(2 4 6 8 10 12 14 16 18 20)
-
-ScriptName="real_per_goodput_ring.cc"
+NumberOfCarsArray=(8 10 12)
+SeedsForFourCars=(1 3 4 5 6)
+ScriptName="QUICVsTCPSimulation.cc"
 StartSeed=1
-EndSeed=2
+EndSeed=5
+perlist=(0 0.1)
 declare -i TotalRuns=($EndSeed*${#NumberOfCarsArray[@]})
-CurrentRun=0
+CurrentRun=(0)
+RunsPerVehicleCount=5
 #Run loop through the amount of cars in the car number array
-for i in ${NumberOfCarsArray[@]};
-do
 
     #run over several trials.  You should get similiar results.
-    for ((j = $StartSeed ; j <= $EndSeed ; j++));
+    for ((j = 0 ; j < $EndSeed ; j++));
     do 
-        declare -i Current=($CurrentRun*$EndSeed+$j)
-        ProgressBar $TotalRuns $Current
-        ./ns3 run scratch/$ScriptName -- --Filename=$i"_Cars_Goodput" --Foldername=$i"_Cars_Output" --seed=$j --numVehicles=$i --verbose=0
+       
+        ProgressBar $RunsPerVehicleCount $j
+        ./ns3 run scratch/$ScriptName -- --Filename="4_Cars_Data" --Foldername="4_Cars_Output" --seed=${SeedsForFourCars[$j]} --numVehicles=4 --verbose=1
+        sleep 1
     done
-    CurrentRun=($CurrentRun+1)
-done
 echo "DONE"
