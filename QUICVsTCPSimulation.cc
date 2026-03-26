@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -46,7 +47,7 @@
 #include "ns3/simulator.h"
 #include "ns3/command-line.h"
 
-
+#include "ns3/quic-bbr.h"
 #include "ns3/quic-module.h"
 #include "ns3/quic-client-server-helper.h"
 #include "ns3/quic-helper.h"
@@ -170,7 +171,9 @@ RunOne (const std::string &transport,
 {
   RngSeedManager::SetSeed (seed);
   RngSeedManager::SetRun (1);
-
+  //taken from the example.  If set too high the program breaks.  Set to 500Kbps, program doesn't break that way.  It does at 1Mbps.
+  Config::SetDefault ("ns3::TcpSocketState::MaxPacingRate", StringValue ("500Kbps"));
+  Config::SetDefault ("ns3::TcpSocketState::EnablePacing", BooleanValue (1));
   // 1. Global Protocol Config
   if (transport == "tcp")
     {
@@ -182,11 +185,14 @@ RunOne (const std::string &transport,
     {
       Config::SetDefault ("ns3::QuicL4Protocol::SocketType",
                           TypeIdValue (QuicBbr::GetTypeId ()));
-      //required.  Otherwise it breaks some stuff if these are not present.
+      //required.  High buffer size.  Buffer overflow breaks the simulation and causes an infinite wait for whatever reason.
       Config::SetDefault ("ns3::QuicSocketBase::SocketSndBufSize",
-                          UintegerValue (2000000));
+                          UintegerValue (40000000)); 
       Config::SetDefault ("ns3::QuicSocketBase::SocketRcvBufSize",
-                          UintegerValue (2000000));
+                          UintegerValue (40000000));
+      Config::SetDefault ("ns3::QuicStreamBase::StreamSndBufSize", UintegerValue(40000000));
+      
+      Config::SetDefault ("ns3::QuicStreamBase::StreamRcvBufSize", UintegerValue(40000000));
     }
 
   // 2. Nodes & Mobility
@@ -277,7 +283,7 @@ RunOne (const std::string &transport,
 
   for (uint32_t sender = 0; sender < numVehicles; ++sender)
     {
-      uint32_t recvr = (sender + 1) % numVehicles;
+      uint32_t recvr = (sender+1)%numVehicles;
       uint16_t port  = basePort + sender;
 
       if (transport == "tcp")
@@ -307,7 +313,7 @@ RunOne (const std::string &transport,
           QuicServerHelper server (port);
           auto serverApps = server.Install (nodes.Get (recvr));
           serverApps.Start (Seconds (0.5));
-          serverApps.Stop  (Seconds (simTime));
+          serverApps.Stop  (Seconds (simTime-1));
 
           QuicClientHelper client (ifaces.GetAddress (recvr), port);
           uint32_t maxPkts =
@@ -347,15 +353,13 @@ RunOne (const std::string &transport,
   Simulator::Destroy ();
 
 
-  double Totaldelay=0;
-
   for (const auto &kv : monitor->GetFlowStats ())
   {
     auto t = classifier->FindFlow (kv.first);
     if (verbose){
         std::cout << "    [DBG] flow " << kv.first << " " << t.sourceAddress
                 << " -> " << t.destinationAddress << ":" << t.destinationPort
-                << " rxBytes=" << kv.second.rxBytes << "\n";
+                << " rxBytes=" << kv.second.rxBytes << std::endl;
       }
     if (t.destinationPort >= basePort)
       {
@@ -382,12 +386,13 @@ RunOne (const std::string &transport,
   double Row[] = {(double) numVehicles , per , AverageDelay , p95 , AverageJitter , goodput};
   WriteToCSVFile(Row,FileName);
 
-
+  std::cout << "flowcount: " << flowCount << std::endl;
   if (flowCount == 0)
     return 0.0;
   return (totalRxBytes * 8.0) / (flowCount * (measureEnd - measureStart) * 1e6);
 }
-
+#define QUICSelect 1
+#define TCPSelect 0
 // -------------------------------------------------------
 // main
 // -------------------------------------------------------
@@ -411,6 +416,8 @@ main (int argc, char *argv[])
   double offeredLoadMbps  = 1.0;
   uint32_t seed           = 1;
   uint32_t verbose        = 1;
+  uint32_t overWrite      = 1;
+  uint32_t TCPOrQUIC      = 1;
   
   CommandLine cmd;
   cmd.AddValue("Filename",      "Output file name",                     FileoutputName);
@@ -429,6 +436,8 @@ main (int argc, char *argv[])
   cmd.AddValue ("seed",          "RNG seed",                          seed);
   cmd.AddValue ("verbose",       "Is output verbose",                 verbose);
   cmd.AddValue ("Streams",       "Number of QUIC Streams",            streams);
+  cmd.AddValue ("overWrite",     "Overwrite existing csv files",      overWrite);
+  cmd.AddValue ("TCPOrQUIC",     "TO select which protocol to use",   TCPOrQUIC);
   cmd.Parse (argc, argv);
 
   std::cout << perListStr;
@@ -459,13 +468,16 @@ main (int argc, char *argv[])
   }
   std::string QUICCSV=outputFolder+"/"+seedString+"_"+FileoutputName+"_QUIC.csv";
   std::string TCPCSV=outputFolder+"/"+seedString+"_"+FileoutputName+"_TCP.csv";
-  CreateCSVFile(TCPCSV);
-  CreateCSVFile(QUICCSV);
+  if (overWrite==1){
+    CreateCSVFile(TCPCSV);
+    CreateCSVFile(QUICCSV);
+  }
 
   for (double per : pers)
     {
       double tcpGp=0;
       double quicGp=0;
+      if (1){
       if (verbose) {
         std::cout << "PER=" << per << " : TCP(BBR)..." << std::flush;
       }
@@ -478,8 +490,12 @@ main (int argc, char *argv[])
           std::cout << e;
           tcpGp=-1; //error value
         }
-      if (verbose) {
+              if (verbose) {
         std::cout << " " << tcpGp << " Mbps\n" << std::flush;
+              }
+      }
+      if(1) {
+      if (verbose) {
 
         std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
       }
@@ -495,6 +511,7 @@ main (int argc, char *argv[])
       if (verbose){
         std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
       }
+    }
     }
 
 
