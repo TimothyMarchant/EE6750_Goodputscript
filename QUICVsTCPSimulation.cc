@@ -24,7 +24,6 @@
 //   --speedSpread     max speed deviation m/s (default 3)
 //   --seed            RNG seed (default 1)
 
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -70,7 +69,19 @@ ParseDoubleList (const std::string &csv)
       out.push_back (std::stod (item));
   return out;
 }
+//Parse list of integers
+static std::vector<uint32_t>
+ParseUintList (const std::string &IntList)
+{
 
+  std::vector<uint32_t> out;
+  std::stringstream ss (IntList);
+  std::string item;
+  while (std::getline (ss, item, ','))
+    if (!item.empty ())
+      out.push_back (std::stod (item));
+  return out;
+}
 /// Compute the P95 value from a vector of doubles (modifies input via sort)
 static double
 Percentile95 (std::vector<double> &vals)
@@ -79,23 +90,26 @@ Percentile95 (std::vector<double> &vals)
     return 0.0;
   std::sort (vals.begin (), vals.end ());
   // Use nearest-rank method
-  size_t idx = (size_t)std::ceil (0.95 * vals.size ()) - 1;
+  size_t idx = (size_t) std::ceil (0.95 * vals.size ()) - 1;
   if (idx >= vals.size ())
     idx = vals.size () - 1;
   return vals[idx];
 }
 //Get average value from a vector of doubles
 static double
-DataAverage (std::vector<double> &vals){
-  if (vals.empty()){
-    return 0.0;
-  }
-  double sum=0;
-  int length=vals.size();
-  for (int i=0;i<length;i++){
-    sum += vals[i];
-  }
-  double average = (double) sum/length;
+DataAverage (std::vector<double> &vals)
+{
+  if (vals.empty ())
+    {
+      return 0.0;
+    }
+  double sum = 0;
+  int length = vals.size ();
+  for (int i = 0; i < length; i++)
+    {
+      sum += vals[i];
+    }
+  double average = (double) sum / length;
   return average;
 }
 static void
@@ -115,59 +129,54 @@ ApplyPerToDevices (const NetDeviceContainer &devices, double per)
     }
 }
 //strings should be formatted already. delimter=,
-static void 
-CreateCSVFile(const std::string FileName){
-  const std::string ColumnNames = "Vehicles,PER,AverageLatency,P95Latency,AverageJitter,Goodput";
-  try{
-    std::ofstream File;
+static void
+CreateCSVFile (const std::string FileName)
+{
+  const std::string ColumnNames = "Vehicles,Speed,PER,AverageLatency,P95Latency,AverageJitter,Goodput";
+  try
+    {
+      std::ofstream File;
 
-    File.open(FileName);
-    File << ColumnNames << std::endl;
-    File.close();
-  }
-  catch (int e){
-    std::cout << "Create error\n";
-    std::cout << e << std::endl;
-  }
-}
-static void WriteToCSVFile(double * Row, const std::string FileName){
-  std::fstream streamwriter;
-  
-  try {
-    streamwriter.open(FileName, std::ios::app);
-    for (int i=0;i<5;i++){
-      streamwriter << Row[i];
-      streamwriter << ",";
+      File.open (FileName);
+      File << ColumnNames << std::endl;
+      File.close ();
     }
-    streamwriter << Row[5] << std::endl;
-    streamwriter.close();
-  }
-  catch (int e){
-    std::cout << "Write Error\n";
-    std::cout << e << std::endl;
-  }
+  catch (int e)
+    {
+      std::cout << "Create error\n";
+      std::cout << e << std::endl;
+    }
+}
+static void
+WriteToCSVFile (double *Row, const std::string FileName)
+{
+  std::fstream streamwriter;
+
+  try
+    {
+      streamwriter.open (FileName, std::ios::app);
+      for (int i = 0; i < 6; i++)
+        {
+          streamwriter << Row[i];
+          streamwriter << ",";
+        }
+      streamwriter << Row[6] << std::endl;
+      streamwriter.close ();
+    }
+  catch (int e)
+    {
+      std::cout << "Write Error\n";
+      std::cout << e << std::endl;
+    }
 }
 // -------------------------------------------------------
 // Run one simulation, return average goodput per flow
 // -------------------------------------------------------
 static double
-RunOne (const std::string &transport,
-        double              per,
-        uint32_t            numVehicles,
-        double              simTime,
-        double              measureStart,
-        double              measureEnd,
-        double              clusterLength,
-        double              clusterWidth,
-        double              speed,
-        double              speedSpread,
-        uint32_t            packetSize,
-        double              offeredLoadMbps,
-        uint32_t            seed,
-        uint32_t            verbose,
-        uint32_t            QUICStreams,
-        std::string         FileName
-      )
+RunOne (const std::string &transport, double per, uint32_t numVehicles, double simTime,
+        double measureStart, double measureEnd, double clusterLength, double clusterWidth,
+        double speed, double speedSpread, uint32_t packetSize, double offeredLoadMbps,
+        uint32_t seed, uint32_t verbose, uint32_t QUICStreams, std::string FileName)
 {
   RngSeedManager::SetSeed (seed);
   RngSeedManager::SetRun (1);
@@ -177,22 +186,17 @@ RunOne (const std::string &transport,
   // 1. Global Protocol Config
   if (transport == "tcp")
     {
-      Config::SetDefault ("ns3::TcpL4Protocol::SocketType",
-                          TypeIdValue (TcpBbr::GetTypeId ()));
-      
+      Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpBbr::GetTypeId ()));
     }
   else
     {
-      Config::SetDefault ("ns3::QuicL4Protocol::SocketType",
-                          TypeIdValue (QuicBbr::GetTypeId ()));
+      Config::SetDefault ("ns3::QuicL4Protocol::SocketType", TypeIdValue (QuicBbr::GetTypeId ()));
       //required.  High buffer size.  Buffer overflow breaks the simulation and causes an infinite wait for whatever reason.
-      Config::SetDefault ("ns3::QuicSocketBase::SocketSndBufSize",
-                          UintegerValue (40000000)); 
-      Config::SetDefault ("ns3::QuicSocketBase::SocketRcvBufSize",
-                          UintegerValue (40000000));
-      Config::SetDefault ("ns3::QuicStreamBase::StreamSndBufSize", UintegerValue(40000000));
-      
-      Config::SetDefault ("ns3::QuicStreamBase::StreamRcvBufSize", UintegerValue(40000000));
+      Config::SetDefault ("ns3::QuicSocketBase::SocketSndBufSize", UintegerValue (40000000));
+      Config::SetDefault ("ns3::QuicSocketBase::SocketRcvBufSize", UintegerValue (40000000));
+      Config::SetDefault ("ns3::QuicStreamBase::StreamSndBufSize", UintegerValue (40000000));
+
+      Config::SetDefault ("ns3::QuicStreamBase::StreamRcvBufSize", UintegerValue (40000000));
     }
 
   // 2. Nodes & Mobility
@@ -233,12 +237,12 @@ RunOne (const std::string &transport,
   YansWifiPhyHelper phy;
   phy.SetChannel (channel.Create ());
   phy.Set ("TxPowerStart", DoubleValue (30.0));
-  phy.Set ("TxPowerEnd",   DoubleValue (30.0));
+  phy.Set ("TxPowerEnd", DoubleValue (30.0));
 
   Wifi80211pHelper wifi = Wifi80211pHelper::Default ();
-  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-                                "DataMode",    StringValue ("OfdmRate12Mbps"),
-                                "ControlMode", StringValue ("OfdmRate12Mbps"));
+  wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode",
+                                StringValue ("OfdmRate12Mbps"), "ControlMode",
+                                StringValue ("OfdmRate12Mbps"));
 
   NqosWaveMacHelper mac = NqosWaveMacHelper::Default ();
   NetDeviceContainer devices = wifi.Install (phy, mac, nodes);
@@ -266,8 +270,7 @@ RunOne (const std::string &transport,
     {
       Ptr<Ipv4L3Protocol> ip = nodes.Get (i)->GetObject<Ipv4L3Protocol> ();
       Ptr<NetDevice> dev = devices.Get (i);
-      Ptr<ArpCache> arpCache =
-          ip->GetInterface (ip->GetInterfaceForDevice (dev))->GetArpCache ();
+      Ptr<ArpCache> arpCache = ip->GetInterface (ip->GetInterfaceForDevice (dev))->GetArpCache ();
       for (uint32_t j = 0; j < numVehicles; ++j)
         {
           if (i == j)
@@ -283,108 +286,101 @@ RunOne (const std::string &transport,
 
   for (uint32_t sender = 0; sender < numVehicles; ++sender)
     {
-      uint32_t recvr = (sender+1)%numVehicles;
-      uint16_t port  = basePort + sender;
+      uint32_t recvr = (sender + 1) % numVehicles;
+      uint16_t port = basePort + sender;
 
       if (transport == "tcp")
         {
           PacketSinkHelper sink ("ns3::TcpSocketFactory",
-                                InetSocketAddress (Ipv4Address::GetAny (), port));
+                                 InetSocketAddress (Ipv4Address::GetAny (), port));
           auto sinkApps = sink.Install (nodes.Get (recvr));
           sinkApps.Start (Seconds (0.5));
-          sinkApps.Stop  (Seconds (simTime));
+          sinkApps.Stop (Seconds (simTime));
 
           std::ostringstream rateStr;
           rateStr << offeredLoadMbps << "Mbps";
           OnOffHelper onoff ("ns3::TcpSocketFactory",
                              InetSocketAddress (ifaces.GetAddress (recvr), port));
-          onoff.SetAttribute ("DataRate",   DataRateValue (DataRate (rateStr.str ())));
+          onoff.SetAttribute ("DataRate", DataRateValue (DataRate (rateStr.str ())));
           onoff.SetAttribute ("PacketSize", UintegerValue (packetSize));
-          onoff.SetAttribute ("OnTime",
-                              StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-          onoff.SetAttribute ("OffTime",
-                              StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+          onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+          onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
           auto clientApps = onoff.Install (nodes.Get (sender));
           clientApps.Start (Seconds (2.0));
-          clientApps.Stop  (Seconds (simTime));
+          clientApps.Stop (Seconds (simTime));
         }
       else // quic
         {
           QuicServerHelper server (port);
           auto serverApps = server.Install (nodes.Get (recvr));
           serverApps.Start (Seconds (0.5));
-          serverApps.Stop  (Seconds (simTime-1));
+          serverApps.Stop (Seconds (simTime - 1));
 
           QuicClientHelper client (ifaces.GetAddress (recvr), port);
           uint32_t maxPkts =
-              (uint32_t)((offeredLoadMbps * 1e6 / (packetSize * 8.0)) * simTime * 2);
-          client.SetAttribute ("MaxPackets",  UintegerValue (maxPkts));
-          client.SetAttribute ("Interval",    TimeValue (MilliSeconds (
-              (packetSize * 8.0) / (offeredLoadMbps * 1000.0))));
-          client.SetAttribute ("PacketSize",  UintegerValue (packetSize));
-          client.SetAttribute ("NumStreams",   UintegerValue (QUICStreams));
+              (uint32_t) ((offeredLoadMbps * 1e6 / (packetSize * 8.0)) * simTime * 2);
+          client.SetAttribute ("MaxPackets", UintegerValue (maxPkts));
+          client.SetAttribute ("Interval", TimeValue (MilliSeconds ((packetSize * 8.0) /
+                                                                    (offeredLoadMbps * 1000.0))));
+          client.SetAttribute ("PacketSize", UintegerValue (packetSize));
+          client.SetAttribute ("NumStreams", UintegerValue (QUICStreams));
           auto clientApps = client.Install (nodes.Get (sender));
           clientApps.Start (Seconds (2.0));
-          clientApps.Stop  (Seconds (simTime));
+          clientApps.Stop (Seconds (simTime));
         }
     }
 
   // 5. FlowMonitor & Run
-  
+
   FlowMonitorHelper flowmon;
   Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
-  Ptr<Ipv4FlowClassifier> classifier =
-  StaticCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+  Ptr<Ipv4FlowClassifier> classifier = StaticCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
 
   double totalRxBytes = 0.0;
-  double TotalJitter=0.0;
+  double TotalJitter = 0.0;
   std::vector<double> flowAvgDelaysMs;
 
-  uint32_t flowCount  = 0;
+  uint32_t flowCount = 0;
 
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
-  
+
   monitor->CheckForLostPackets ();
 
-
-
-    
   Simulator::Destroy ();
 
-
   for (const auto &kv : monitor->GetFlowStats ())
-  {
-    auto t = classifier->FindFlow (kv.first);
-    if (verbose){
-        std::cout << "    [DBG] flow " << kv.first << " " << t.sourceAddress
-                << " -> " << t.destinationAddress << ":" << t.destinationPort
-                << " rxBytes=" << kv.second.rxBytes << std::endl;
-      }
-    if (t.destinationPort >= basePort)
-      {
-                const auto &stats = kv.second;
-      if (stats.rxPackets == 0)
-        continue;
+    {
+      auto t = classifier->FindFlow (kv.first);
+      if (verbose)
+        {
+          std::cout << "    [DBG] flow " << kv.first << " " << t.sourceAddress << " -> "
+                    << t.destinationAddress << ":" << t.destinationPort
+                    << " rxBytes=" << kv.second.rxBytes << std::endl;
+        }
+      if (t.destinationPort >= basePort)
+        {
+          const auto &stats = kv.second;
+          if (stats.rxPackets == 0)
+            continue;
 
           // Average delay for this flow in milliseconds
-          double avgDelayMs = stats.delaySum.GetMilliSeconds () / (double)stats.rxPackets;
+          double avgDelayMs = stats.delaySum.GetMilliSeconds () / (double) stats.rxPackets;
           flowAvgDelaysMs.push_back (avgDelayMs);
-          
-          TotalJitter  += (double)stats.jitterSum.GetMilliSeconds() / (double)stats.rxPackets;
-          totalRxBytes += (double)kv.second.rxBytes;
+
+          TotalJitter += (double) stats.jitterSum.GetMilliSeconds () / (double) stats.rxPackets;
+          totalRxBytes += (double) kv.second.rxBytes;
 
           flowCount++;
         }
-              
-  }
-  double AverageDelay = DataAverage(flowAvgDelaysMs);
-  double AverageJitter = TotalJitter/flowCount;
-  double p95 = Percentile95(flowAvgDelaysMs);
+    }
+  double AverageDelay = DataAverage (flowAvgDelaysMs);
+  double AverageJitter = TotalJitter / flowCount;
+  double p95 = Percentile95 (flowAvgDelaysMs);
   double goodput = (totalRxBytes * 8.0) / (flowCount * (measureEnd - measureStart) * 1e6);
   //Row
-  double Row[] = {(double) numVehicles , per , AverageDelay , p95 , AverageJitter , goodput};
-  WriteToCSVFile(Row,FileName);
+  double Row[] = {(double) numVehicles, speed, per, AverageDelay, p95, AverageJitter, goodput};
+  WriteToCSVFile (Row, FileName);
 
   std::cout << "flowcount: " << flowCount << std::endl;
   if (flowCount == 0)
@@ -399,122 +395,147 @@ RunOne (const std::string &transport,
 int
 main (int argc, char *argv[])
 {
-  std::string perListStr  = "0,0.005,0.01,0.02,0.05,0.1";
+  std::string perListStr = "0,0.005,0.01,0.02,0.05,0.1";
   std::string FileoutputName = "goodput";
   std::string outputFolder = "goodputOutputs";
+  std::string numVehiclesStr = "6";
+  std::string speedListStr = "25.0";
 
-  uint32_t streams        = 1;
-  uint32_t numVehicles    = 6;
-  double simTime          = 40.0;
-  double measureStart     = 15.0;
-  double measureEnd       = 35.0;
-  double clusterLength    = 50.0;
-  double clusterWidth     = 5.0;
-  double speed            = 25.0;
-  double speedSpread      = 3.0;
-  uint32_t packetSize     = 512;
-  double offeredLoadMbps  = 1.0;
-  uint32_t seed           = 1;
-  uint32_t verbose        = 1;
-  uint32_t overWrite      = 1;
-  uint32_t TCPOrQUIC      = 1;
-  
+  uint32_t streams = 1;
+  double simTime = 40.0;
+  double measureStart = 15.0;
+  double measureEnd = 35.0;
+  double clusterLength = 50.0;
+  double clusterWidth = 5.0;
+  double speedSpread = 3.0;
+  uint32_t packetSize = 512;
+  double offeredLoadMbps = 1.0;
+  uint32_t seed = 1;
+  uint32_t verbose = 1;
+  uint32_t overWrite = 1;
+  uint32_t TCPOrQUIC = 1;
+
   CommandLine cmd;
-  cmd.AddValue("Filename",      "Output file name",                     FileoutputName);
-  cmd.AddValue("Foldername",    "Output folder name",                     outputFolder);
-  cmd.AddValue ("perList",       "Comma-separated PER list",          perListStr);
-  cmd.AddValue ("numVehicles",   "Number of vehicles in cluster",     numVehicles);
-  cmd.AddValue ("simTime",       "Simulation time (s)",               simTime);
-  cmd.AddValue ("measureStart",  "Goodput measurement start (s)",     measureStart);
-  cmd.AddValue ("measureEnd",    "Goodput measurement end (s)",       measureEnd);
-  cmd.AddValue ("clusterLength", "Cluster length along highway (m)",  clusterLength);
-  cmd.AddValue ("clusterWidth",  "Cluster width across lanes (m)",    clusterWidth);
-  cmd.AddValue ("speed",         "Mean vehicle speed (m/s)",          speed);
-  cmd.AddValue ("speedSpread",   "Max speed deviation (m/s)",         speedSpread);
-  cmd.AddValue ("packetSize",    "Packet size in bytes",              packetSize);
-  cmd.AddValue ("rateMbps",      "Offered load per flow (Mbps)",      offeredLoadMbps);
-  cmd.AddValue ("seed",          "RNG seed",                          seed);
-  cmd.AddValue ("verbose",       "Is output verbose",                 verbose);
-  cmd.AddValue ("Streams",       "Number of QUIC Streams",            streams);
-  cmd.AddValue ("overWrite",     "Overwrite existing csv files",      overWrite);
-  cmd.AddValue ("TCPOrQUIC",     "TO select which protocol to use",   TCPOrQUIC);
+  cmd.AddValue ("Filename", "Output file name", FileoutputName);
+  cmd.AddValue ("Foldername", "Output folder name", outputFolder);
+  cmd.AddValue ("perList", "Comma-separated PER list", perListStr);
+  cmd.AddValue ("numVehicles", "Number of vehicles in cluster", numVehiclesStr);
+  cmd.AddValue ("simTime", "Simulation time (s)", simTime);
+  cmd.AddValue ("measureStart", "Goodput measurement start (s)", measureStart);
+  cmd.AddValue ("measureEnd", "Goodput measurement end (s)", measureEnd);
+  cmd.AddValue ("clusterLength", "Cluster length along highway (m)", clusterLength);
+  cmd.AddValue ("clusterWidth", "Cluster width across lanes (m)", clusterWidth);
+  cmd.AddValue ("speedList", "Mean vehicle speed (m/s)", speedListStr);
+  cmd.AddValue ("speedSpread", "Max speed deviation (m/s)", speedSpread);
+  cmd.AddValue ("packetSize", "Packet size in bytes", packetSize);
+  cmd.AddValue ("rateMbps", "Offered load per flow (Mbps)", offeredLoadMbps);
+  cmd.AddValue ("seed", "RNG seed", seed);
+  cmd.AddValue ("verbose", "Is output verbose", verbose);
+  cmd.AddValue ("Streams", "Number of QUIC Streams", streams);
+  cmd.AddValue ("overWrite", "Overwrite existing csv files", overWrite);
+  cmd.AddValue ("TCPOrQUIC", "TO select which protocol to use", TCPOrQUIC);
   cmd.Parse (argc, argv);
 
   std::cout << perListStr;
-  std::string seedString  = std::to_string(seed);
+  std::string seedString = std::to_string (seed);
+  std::string QUICOUTPUTFOLDER="QUIC";
+  std::string TCPOUTPUTFOLDER="TCP";
 
-  try {
-    std::filesystem::create_directory(outputFolder);
-  }
-  catch (int e){
-    std::cout << e;
-    std::cout << "Folder exists already";
-  }
+  try
+    {
+      std::filesystem::create_directory (outputFolder);
+      std::filesystem::create_directory (outputFolder+"/"+QUICOUTPUTFOLDER);
+      std::filesystem::create_directory (outputFolder+"/"+TCPOUTPUTFOLDER);
+
+    }
+  catch (int e)
+    {
+      std::cout << e;
+      std::cout << "Folder exists already";
+    }
+  auto numVehicles = ParseUintList (numVehiclesStr);
+  auto speedList = ParseDoubleList (speedListStr);
   auto pers = ParseDoubleList (perListStr);
   NS_ABORT_MSG_IF (pers.empty (), "perList is empty");
-  NS_ABORT_MSG_IF (numVehicles < 2, "Need at least 2 vehicles");
+  NS_ABORT_MSG_IF (numVehicles[0] < 2, "Need at least 2 vehicles");
 
-  uint32_t numFlows = numVehicles; // ring: one flow per vehicle
-  if (verbose){
-  std::cout << "V2V Cluster Goodput vs PER  |  802.11p/WAVE  |  TCP(BBR) vs QUIC(BBR)\n";
-  std::cout << "numVehicles=" << numVehicles
-            << "  flows=" << numFlows << " (ring)"
-            << "  offeredLoad=" << offeredLoadMbps << " Mbps/flow"
-            << "  packetSize=" << packetSize << " B\n";
-  std::cout << "cluster=" << clusterLength << "x" << clusterWidth << " m"
-            << "  speed=" << speed << " +/-" << speedSpread << " m/s"
-            << "  simTime=" << simTime << " s"
-            << "  measure=[" << measureStart << "," << measureEnd << "] s\n\n";
-  }
-  std::string QUICCSV=outputFolder+"/"+seedString+"_"+FileoutputName+"_QUIC.csv";
-  std::string TCPCSV=outputFolder+"/"+seedString+"_"+FileoutputName+"_TCP.csv";
-  if (overWrite==1){
-    CreateCSVFile(TCPCSV);
-    CreateCSVFile(QUICCSV);
-  }
+  std::string QUICCSV = outputFolder + "/" + QUICOUTPUTFOLDER + "/" + seedString + "_" + FileoutputName + "_QUIC.csv";
+  std::string TCPCSV = outputFolder + "/" + TCPOUTPUTFOLDER + "/" + seedString + "_" + FileoutputName + "_TCP.csv";
+  if (overWrite == 1)
+    {
+      CreateCSVFile (TCPCSV);
+      CreateCSVFile (QUICCSV);
+    }
 
   for (double per : pers)
     {
-      double tcpGp=0;
-      double quicGp=0;
-      if (1){
-      if (verbose) {
-        std::cout << "PER=" << per << " : TCP(BBR)..." << std::flush;
-      }
-      try {
-        tcpGp = RunOne ("tcp", per, numVehicles, simTime, measureStart,
-                             measureEnd, clusterLength, clusterWidth, speed,
-                             speedSpread, packetSize, offeredLoadMbps, seed, verbose,streams,TCPCSV);
-        }
-        catch (int e){
-          std::cout << e;
-          tcpGp=-1; //error value
-        }
-              if (verbose) {
-        std::cout << " " << tcpGp << " Mbps\n" << std::flush;
-              }
-      }
-      if(1) {
-      if (verbose) {
+      for (uint32_t VehicleCount : numVehicles)
+        {
+          for (double speed : speedList)
+            {
+              uint32_t numFlows = VehicleCount; // ring: one flow per vehicle
+              if (verbose)
+                {
+                  std::cout
+                      << "V2V Cluster Goodput vs PER  |  802.11p/WAVE  |  TCP(BBR) vs QUIC(BBR)\n";
+                  std::cout << "numVehicles=" << VehicleCount << "  flows=" << numFlows << " (ring)"
+                            << "  offeredLoad=" << offeredLoadMbps << " Mbps/flow"
+                            << "  packetSize=" << packetSize << " B\n";
+                  std::cout << "cluster=" << clusterLength << "x" << clusterWidth << " m"
+                            << "  speed=" << speed << " +/-" << speedSpread << " m/s"
+                            << "  simTime=" << simTime << " s"
+                            << "  measure=[" << measureStart << "," << measureEnd << "] s\n\n";
+                }
+              double tcpGp = 0;
+              double quicGp = 0;
+              if (1)
+                {
+                  if (verbose)
+                    {
+                      std::cout << "PER=" << per << " : TCP(BBR)..." << std::flush;
+                    }
+                  try
+                    {
+                      tcpGp = RunOne ("tcp", per, VehicleCount, simTime, measureStart, measureEnd,
+                                      clusterLength, clusterWidth, speed, speedSpread, packetSize,
+                                      offeredLoadMbps, seed, verbose, streams, TCPCSV);
+                    }
+                  catch (int e)
+                    {
+                      std::cout << e;
+                      tcpGp = -1; //error value
+                    }
+                  if (verbose)
+                    {
+                      std::cout << " " << tcpGp << " Mbps\n" << std::flush;
+                    }
+                }
+              if (1)
+                {
+                  if (verbose)
+                    {
 
-        std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
-      }
-      try{
-        quicGp = RunOne ("quic", per, numVehicles, simTime, measureStart,
-                              measureEnd, clusterLength, clusterWidth, speed,
-                              speedSpread, packetSize, offeredLoadMbps, seed, verbose,streams,QUICCSV);
+                      std::cout << "PER=" << per << " : QUIC(BBR)..." << std::flush;
+                    }
+                  try
+                    {
+                      quicGp = RunOne ("quic", per, VehicleCount, simTime, measureStart, measureEnd,
+                                       clusterLength, clusterWidth, speed, speedSpread, packetSize,
+                                       offeredLoadMbps, seed, verbose, streams, QUICCSV);
+                    }
+                  catch (int e)
+                    {
+                      std::cout << e;
+                      quicGp = -1; //error value
+                    }
+                  if (verbose)
+                    {
+                      std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
+                    }
+                }
+            }
         }
-        catch (int e){
-          std::cout << e;
-          quicGp = -1; //error value
-        }
-      if (verbose){
-        std::cout << " " << quicGp << " Mbps\n\n" << std::flush;
-      }
     }
-    }
-
 
   return 0;
 }
-
