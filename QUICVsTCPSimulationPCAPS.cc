@@ -269,18 +269,16 @@ RunOne (const std::string &transport, double per, uint32_t numVehicles, double s
       internet.Install (nodes);
     }
   NetDeviceContainer PCAPdevices;
-  //pointToPoint.Install(nodes);
 
   NqosWaveMacHelper mac = NqosWaveMacHelper::Default ();
   NetDeviceContainer devices = wifi.Install (phy, mac, nodes);
   ApplyPerToDevices (devices, per);
 
-  std::cout << "RAN";
+  std::cout << "\n";
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer ifaces = ipv4.Assign (devices);
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-  //Ipv4InterfaceContainer interfaces = ipv4.Assign (PCAPdevices);
 
   // Static ARP entries — bypass ARP for WAVE
   for (uint32_t i = 0; i < numVehicles; ++i)
@@ -358,8 +356,9 @@ RunOne (const std::string &transport, double per, uint32_t numVehicles, double s
   std::vector<double> flowAvgDelaysMs;
 
   uint32_t flowCount = 0;
-  //pointToPoint.EnablePcapAll (PCAPFileName);
-  phy.EnablePcap(PCAPFileName, devices);
+  //Save pcap file for later viewing
+  std::string UpdatedFileName=PCAPFileName+"_PER_"+std::to_string(per)+"_SPEED_"+std::to_string(speed)+"_Vehicles_"+std::to_string(numVehicles);
+  phy.EnablePcap(UpdatedFileName, devices);
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
 
