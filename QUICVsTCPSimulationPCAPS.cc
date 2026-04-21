@@ -173,6 +173,18 @@ WriteToCSVFile (double *Row, const std::string FileName)
       std::cout << e << std::endl;
     }
 }
+static void CreateFolder(std::string foldername){
+  try
+    {
+      std::filesystem::create_directory (foldername);
+      
+    }
+  catch (int e)
+    {
+      std::cout << e << std::endl;
+      std::cout << "Folder exists already" << std::endl;
+    }
+}
 // -------------------------------------------------------
 // Run one simulation, return average goodput per flow
 // -------------------------------------------------------
@@ -356,8 +368,8 @@ RunOne (const std::string &transport, double per, uint32_t numVehicles, double s
   std::vector<double> flowAvgDelaysMs;
 
   uint32_t flowCount = 0;
-  //Save pcap file for later viewing
-  std::string UpdatedFileName=PCAPFileName+"_PER_"+std::to_string(per)+"_SPEED_"+std::to_string(speed)+"_Vehicles_"+std::to_string(numVehicles);
+  //Save pcap file for later viewing  
+  std::string UpdatedFileName = PCAPFileName+"_PER_"+std::to_string(per)+"_SPEED_"+std::to_string(speed)+"_Vehicles_"+std::to_string(numVehicles);
   phy.EnablePcap(UpdatedFileName, devices);
   Simulator::Stop (Seconds (simTime));
   Simulator::Run ();
@@ -480,8 +492,7 @@ main (int argc, char *argv[])
   std::string QUICCSV = outputFolder + "/" + QUICOUTPUTFOLDER + "/" + seedString + "_" + FileoutputName + "_QUIC.csv";
   std::string TCPCSV = outputFolder + "/" + TCPOUTPUTFOLDER + "/" + seedString + "_" + FileoutputName + "_TCP.csv";
 
-  std::string PCAPNameQUIC = outputFolder + "/" + QUICOUTPUTFOLDER + "/" + PCAPFolder + "/" + seedString + "_" + FileoutputName + "_QUIC";
-  std::string PCAPNameTCP = outputFolder + "/" + TCPOUTPUTFOLDER + "/" + PCAPFolder + "/" + seedString + "_" + FileoutputName + "_TCP";
+  
 
 
   if (overWrite == 1)
@@ -496,6 +507,15 @@ main (int argc, char *argv[])
         {
           for (double speed : speedList)
             {
+              std::string NewFolderName="Folder_PER_"+std::to_string(per)+"_SPEED_"+std::to_string(speed)+"_Vehicles_"+std::to_string(VehicleCount);
+              
+              std::string PCAPNameQUIC = outputFolder + "/" + QUICOUTPUTFOLDER + "/" + PCAPFolder + "/" + NewFolderName + "/" + seedString + "_" + FileoutputName + "_QUIC";
+              std::string PCAPNameTCP = outputFolder + "/" + TCPOUTPUTFOLDER + "/" + PCAPFolder + "/" + NewFolderName+"/" + seedString + "_" + FileoutputName + "_TCP";
+              CreateFolder(outputFolder + "/" + QUICOUTPUTFOLDER + "/" + PCAPFolder + "/" + NewFolderName);
+              CreateFolder(outputFolder + "/" + TCPOUTPUTFOLDER + "/" + PCAPFolder + "/" + NewFolderName);
+
+
+
               uint32_t numFlows = VehicleCount; // ring: one flow per vehicle
               if (verbose)
                 {
@@ -519,6 +539,7 @@ main (int argc, char *argv[])
                     }
                   try
                     {
+
                       tcpGp = RunOne ("tcp", per, VehicleCount, simTime, measureStart, measureEnd,
                                       clusterLength, clusterWidth, speed, speedSpread, packetSize,
                                       offeredLoadMbps, seed, verbose, streams, TCPCSV, PCAPNameTCP);
@@ -542,6 +563,7 @@ main (int argc, char *argv[])
                     }
                   try
                     {
+
                       quicGp = RunOne ("quic", per, VehicleCount, simTime, measureStart, measureEnd,
                                        clusterLength, clusterWidth, speed, speedSpread, packetSize,
                                        offeredLoadMbps, seed, verbose, streams, QUICCSV, PCAPNameQUIC);
