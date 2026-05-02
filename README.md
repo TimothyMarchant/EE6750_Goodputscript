@@ -1,6 +1,12 @@
 This repo is for our group project in EE6750 wireless communications at Kennesaw State University.  In this project we are using NS-3 with a QUIC addon to determine if QUIC(BBR) has better performance in V2V communication over WiFi than TCP(BBR).  
+
+
 This repo contains scripts for running our simulations and necessary bash scripts for automating that process.  Our results are presented in our presentation and paper.  In low congestion QUIC was better (for the most part) while TCP was better in other scenarios.  However, QUIC always had higher goodput.  
-To run the simulations to get our results first you must install all the dependencies we have.  These are listed after these instructions.  To run all the simulations after this point, place RunSims.sh and RunSimsPCAP.sh (you will have to run chmod +x) in the NS-3 folder after running the installer script (detailed later).  After this place the QUICVsTCPSimulation.cc and QUICVsTCPSimulationPCAP.cc in NS-3/Scratch.  You can now run the RunSims.sh and RunSimsPCAP.sh files to produce results.  These will produce output folders with "NAMEExperiment_Output" for RunSims.sh and "NAMEExperiment_OutputPCAP/PROTOCOLMACRETRYS" from RunSimPCAP.sh.  There will be two folders one being QUICMACRETRYS and TCPMACRETRYS.  You will need to copy and paste the results from the NS-3 folder to the PythonSrc folder.  Now, run the PCAPAnalyze.py file to count all MAC retries.  This requires pyshark.  Then you can run QUICVsTCPPlotterNotebook.ipynb to get all our plots.  
+
+To run the simulations to get our results first you must install all the dependencies we have.  These are listed after these instructions.  To run all the simulations after this point, place RunSims.sh and RunSimsPCAP.sh (you will have to run chmod +x) in the NS-3 folder after running the installer script (detailed later).  After this place the QUICVsTCPSimulation.cc and QUICVsTCPSimulationPCAP.cc in NS-3/Scratch.  
+
+You can now run the RunSims.sh and RunSimsPCAP.sh files to produce results.  These will produce output folders with "NAMEExperiment_Output" for RunSims.sh and "NAMEExperiment_OutputPCAP/PROTOCOLMACRETRYS" from RunSimPCAP.sh.  There will be two folders one being QUICMACRETRYS and TCPMACRETRYS.  You will need to copy and paste the results from the NS-3 folder to the PythonSrc folder.  
+Now, run the PCAPAnalyze.py file to count all MAC retries.  This requires pyshark.  Then you can run QUICVsTCPPlotterNotebook.ipynb to get all our plots.  
 
 To run the RunSims.sh/RunSimsPCAP.sh files type the following
 
