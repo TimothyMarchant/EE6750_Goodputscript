@@ -1,8 +1,17 @@
 This repo is for our group project in EE6750 wireless communications at Kennesaw State University.  In this project we are using NS-3 with a QUIC addon to determine if QUIC(BBR) has better performance in V2V communication over WiFi than TCP(BBR).  
-This repo contains scripts for running our simulations and necessary bash scripts for automating that process.  With our limited testing currently it would seem TCP has better P95 latency at the moment.  More testing needs to be done.
-To run these, place RunSims.sh in the NS-3 folder, and the goodput script in NS-3/Scratch.  This requires that you have NS-3 install correctly.  
+This repo contains scripts for running our simulations and necessary bash scripts for automating that process.  Our results are presented in our presentation and paper.  In low congestion QUIC was better (for the most part) while TCP was better in other scenarios.  However, QUIC always had higher goodput.  
+To run the simulations to get our results first you must install all the dependencies we have.  These are listed after these instructions.  To run all the simulations after this point, place RunSims.sh and RunSimsPCAP.sh (you will have to run chmod +x) in the NS-3 folder after running the installer script (detailed later).  After this place the QUICVsTCPSimulation.cc and QUICVsTCPSimulationPCAP.cc in NS-3/Scratch.  You can now run the RunSims.sh and RunSimsPCAP.sh files to produce results.  These will produce output folders with "NAMEExperiment_Output" for RunSims.sh and "NAMEExperiment_OutputPCAP/PROTOCOLMACRETRYS" from RunSimPCAP.sh.  There will be two folders one being QUICMACRETRYS and TCPMACRETRYS.  You will need to copy and paste the results from the NS-3 folder to the PythonSrc folder.  Now, run the PCAPAnalyze.py file to count all MAC retries.  This requires pyshark.  Then you can run QUICVsTCPPlotterNotebook.ipynb to get all our plots.  
 
-To install all the required depednecies follow these instructions.  Run these in WSL not windows git bash otherwise you will have problems (do not clone repos in windows git bash).  gcc and g++ version 9 is required.
+To run the RunSims.sh/RunSimsPCAP.sh files type the following
+
+```
+chmod +x RunSims.sh
+chmod +x RunSimsPCAP.sh
+./RunSims.sh
+./RunSimsPCAP.sh
+```
+
+To install all the required dependencies follow these instructions.  Run these in WSL not windows git bash otherwise you will have problems (do not clone repos in windows git bash).  gcc and g++ version 9 is required.
 to install version 9 of gcc and g++ run  
 ```bash
 sudo apt install g++-9  
@@ -34,3 +43,12 @@ if you need to run a script we wrote just run
 after copying that file into the scratch folder.  Change <SCRIPTNAME> to the name of the file (e.g. if it is named QUICSimulation.cc put QUICSimulation in place of <SCRIPTNAME>).  
 
 If you have problems running it please let me know (also you can open the script and copy the commands in it).
+
+Also some python libraries to install
+```
+pip install numpy
+pip install matplotlib
+pip install pyshark
+pip install pandas
+```
+
